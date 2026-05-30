@@ -5,13 +5,10 @@
 #include "constants.h"
 #include "player.h"
 #include "raylib.h"
+#include "utils.h"
 
-#define max(a, b) a > b ? a : b
-#define min(a, b) a < b ? a : b
+static void Shoot(Player *player);
 
-static void Shoot(Bullet *bullet, Player player);
-
-static Bullet *ammo = NULL;
 static float shootTimer = 0.0f;
 
 void InitPlayer(Player *player)
@@ -23,27 +20,12 @@ void InitPlayer(Player *player)
         player->speed = PLAYER_SPEED;
         player->color = BLUE;
         player->fireRate = DEFAULT_FIRE_RATE;
-        player->ammoIdx = 0;
-        player->ammoCount = DEFAULT_AMMO_COUNT;
-
-        ammo = InitAmmo(player->ammoCount);
-        if (!ammo) {
-                fprintf(stderr, "[ERROR]: Could not initialize ammo.");
-                exit(1);
-        }
-
-        for (int i = 0; i < player->ammoCount; i++)
-                InitBullet(ammo + i);
 }
 
 void DrawPlayer(Player player)
 {
         float x = player.pos.x;
         float y = player.pos.y;
-
-        
-        for (int i = 0; i < player.ammoCount; i++)
-                DrawBullet(ammo[i]);
 
         DrawRectangle(x, y, player.width, player.height, player.color);
 }
@@ -76,42 +58,25 @@ void UpdatePlayer(Player *player, float dt)
         }
 
         if (IsKeyDown(KEY_SPACE) && shootTimer >= player->fireRate) {
-                Shoot(ammo + player->ammoIdx, *player);
-                player->ammoIdx = (player->ammoIdx + 1) % player->ammoCount;
+                Shoot(player);
                 shootTimer = 0.0f;
         }
-
-        for (int i = 0; i < player->ammoCount; i++)
-                UpdateBullet(ammo + i, dt);
 }
 
 /**
  * Spawns a bullet at the player's location and set it to active.
  */
-static void Shoot(Bullet *bullet, Player player)
+static void Shoot(Player *player)
 {
-        bullet->pos.x = (player.pos.x + player.width / 2) - bullet->width / 2;
-        bullet->pos.y = player.pos.y;
-        bullet->active = true;
+        for (int i = 0; i < MAX_BULLETS; i++) {
+                if(!bulletPool[i].active) {
+                        bulletPool[i].pos.x = 
+                                (player->pos.x + player->width / 2) 
+                                - bulletPool[i].width / 2;
+                        bulletPool[i].pos.y = player->pos.y;
+                        bulletPool[i].active = true;
+                        break;
+                }
+        }
 }
 
-/**
- * Allocates n bullets and returns a pointer to the begining of the list
- */
-Bullet *InitAmmo(int n) 
-{
-        if (n < 1)
-                return NULL;
-
-        return malloc(sizeof(Bullet) * n);
-}
-
-
-/**
- * Frees any allocated resources.
- */
-void DeInitPlayer(Player *player)
-{
-        player->ammoIdx = 0;
-        free(ammo);
-}
